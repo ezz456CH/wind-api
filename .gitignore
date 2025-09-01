@@ -1,0 +1,4 @@
+node_modules
+stations
+stations.json
+.env

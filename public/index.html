@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Wind</title>
+        <link rel="icon" type="image/x-icon" href="favicon.ico" />
+        <link rel="apple-touch-icon" href="apple-icon.png" />
+        <link rel="stylesheet" type="text/css" href="style.css" />
+    </head>
+    <body>
+        <div class="container">
+            <div class="station-container-row">
+                <label for="station-select">Station:</label>
+                <select id="station-select">
+                    <option value="">n/a</option>
+                </select>
+            </div>
+            <h4 class="windspeedtitle">Windspeed</h4>
+            <div class="windspeed-container">
+                <p class="windspeedmps">n/a m/s</p>
+                <p>|</p>
+                <p class="windspeedkmh">n/a kmh</p>
+                <p>|</p>
+                <p class="windspeedmph">n/a mph</p>
+            </div>
+            <div class="container-row">
+                <div class="windspeed-block">
+                    <p class="suswindspeedtitle">Last 10 Minutes Sustained Wind</p>
+                    <div class="windspeed-container">
+                        <p class="sustained-windspeedmps">n/a m/s</p>
+                        <p>|</p>
+                        <p class="sustained-windspeedkmh">n/a kmh</p>
+                        <p>|</p>
+                        <p class="sustained-windspeedmph">n/a mph</p>
+                    </div>
+                </div>
+                <div class="windspeed-block">
+                    <p class="guststitle">Last 10 Minutes Gusts</p>
+                    <div class="windspeed-container">
+                        <p class="gustsmps">n/a m/s</p>
+                        <p>|</p>
+                        <p class="gustskmh">n/a kmh</p>
+                        <p>|</p>
+                        <p class="gustsmph">n/a mph</p>
+                    </div>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="history-chart"></canvas>
+            </div>
+        </div>
+    </body>
+</html>
+<script src="js/chart.js"></script>
+<script src="js/chartjs-adapter-date-fns"></script>
+<script src="script.js"></script>
