@@ -4,13 +4,13 @@ const windspeedmpsel = document.querySelector(".windspeedmps");
 const windspeedkmhel = document.querySelector(".windspeedkmh");
 const windspeedmphel = document.querySelector(".windspeedmph");
 
-const sustainedwindspeedmpsel = document.querySelector(".sustained-windspeedmps");
-const sustainedwindspeedkmhel = document.querySelector(".sustained-windspeedkmh");
-const sustainedwindspeedmphel = document.querySelector(".sustained-windspeedmph");
+const sustainedwindspeedmpsel = document.querySelector(".sustainedmps");
+const sustainedwindspeedkmhel = document.querySelector(".sustainedkmh");
+const sustainedwindspeedmphel = document.querySelector(".sustainedmph");
 
-const gustmpsel = document.querySelector(".gustsmps");
-const gustskmhel = document.querySelector(".gustskmh");
-const gustsmphel = document.querySelector(".gustsmph");
+const gustmpsel = document.querySelector(".gustmps");
+const gustkmhel = document.querySelector(".gustkmh");
+const gustmphel = document.querySelector(".gustmph");
 
 const ctx = document.getElementById("history-chart").getContext("2d");
 
@@ -171,8 +171,8 @@ async function fetchdata(station_name) {
                 sustainedwindspeedmphel.textContent = "n/a mph";
 
                 gustmpsel.textContent = "n/a m/s";
-                gustskmhel.textContent = "n/a km/h";
-                gustsmphel.textContent = "n/a mph";
+                gustkmhel.textContent = "n/a km/h";
+                gustmphel.textContent = "n/a mph";
 
                 return;
             } else {
@@ -197,8 +197,8 @@ async function fetchdata(station_name) {
             sustainedwindspeedmphel.textContent = "n/a mph";
 
             gustmpsel.textContent = "n/a m/s";
-            gustskmhel.textContent = "n/a km/h";
-            gustsmphel.textContent = "n/a mph";
+            gustkmhel.textContent = "n/a km/h";
+            gustmphel.textContent = "n/a mph";
 
             return;
         }
@@ -220,24 +220,10 @@ async function fetchdata(station_name) {
         windchart.update();
 
         if (last.length > 0) {
-            const latestItem = last[last.length - 1];
-            const windspeedmps = parseFloat(latestItem.windspeed_mps);
-            const sustainedwindmps = last.reduce((acc, item) => acc + parseFloat(item.windspeed_mps || 0), 0) / last.length;
-            const sustainedwindstep = Math.round(sustainedwindmps / 0.1) * 0.1;
-
-            let gustmax = 0;
-            for (let i = 0; i < last.length; i++) {
-                const starttime = new Date(last[i].timestamp).getTime();
-                const windowdata = last.filter((item) => {
-                    const t = new Date(item.timestamp).getTime();
-                    return t >= starttime && t <= starttime + 3000;
-                });
-                if (windowdata.length === 0) continue;
-                const avg = windowdata.reduce((sum, item) => sum + parseFloat(item.windspeed_mps || 0), 0) / windowdata.length;
-                if (avg > gustmax) gustmax = avg;
-            }
-
-            const guststep = Math.round(gustmax / 0.1) * 0.1;
+            const latestitem = last[last.length - 1];
+            const windspeedmps = parseFloat(latestitem.windspeed_mps);
+            let sustainedmps = parseFloat(latestitem.last_10m_sustained);
+            const gustmps = parseFloat(latestitem.last_10m_gust);
 
             if (isNaN(windspeedmps)) {
                 windspeedmpsel.textContent = "n/a m/s";
@@ -249,24 +235,47 @@ async function fetchdata(station_name) {
                 windspeedmphel.textContent = `${(windspeedmps * 2.23694).toFixed(1)} mph`;
             }
 
-            if (isNaN(sustainedwindmps)) {
-                sustainedwindspeedmpsel.textContent = "n/a m/s";
-                sustainedwindspeedkmhel.textContent = "n/a km/h";
-                sustainedwindspeedmphel.textContent = "n/a mph";
+            if (isNaN(sustainedmps) || sustainedmps == 0) {
+                const calculated_sustained = last.reduce((a, b) => a + (parseFloat(b.windspeed_mps) || 0), 0) / last.length;
+
+                sustainedwindspeedmpsel.textContent = `${calculated_sustained.toFixed(1)} m/s`;
+                sustainedwindspeedkmhel.textContent = `${(calculated_sustained * 3.6).toFixed(1)} km/h`;
+                sustainedwindspeedmphel.textContent = `${(calculated_sustained * 2.23694).toFixed(1)} mph`;
             } else {
-                sustainedwindspeedmpsel.textContent = `${sustainedwindstep.toFixed(1)} m/s`;
-                sustainedwindspeedkmhel.textContent = `${(sustainedwindstep * 3.6).toFixed(1)} km/h`;
-                sustainedwindspeedmphel.textContent = `${(sustainedwindstep * 2.23694).toFixed(1)} mph`;
+                sustainedwindspeedmpsel.textContent = `${sustainedmps.toFixed(1)} m/s`;
+                sustainedwindspeedkmhel.textContent = `${(sustainedmps * 3.6).toFixed(1)} km/h`;
+                sustainedwindspeedmphel.textContent = `${(sustainedmps * 2.23694).toFixed(1)} mph`;
             }
 
-            if (gustmax === 0) {
-                gustmpsel.textContent = "n/a m/s";
-                gustskmhel.textContent = "n/a km/h";
-                gustsmphel.textContent = "n/a mph";
+            if (isNaN(gustmps) || gustmps == 0) {
+                let maxgust = 0;
+
+                for (let i = 0; i < last.length; i++) {
+                    let segmentmax = last[i].windspeed_mps;
+                    let starttime = new Date(last[i].timestamp).getTime();
+                    let lasttime = starttime;
+
+                    for (let j = i + 1; j < last.length; j++) {
+                        const currenttime = new Date(last[j].timestamp).getTime();
+                        const delta = (currenttime - lasttime) / 1000;
+                        if (delta > 2) break;
+
+                        segmentmax = Math.max(segmentmax, last[j].windspeed_mps);
+                        lasttime = currenttime;
+
+                        const elapsed = (lasttime - starttime) / 1000;
+                        if (elapsed >= 3) maxgust = Math.max(maxgust, segmentmax);
+                        if (elapsed > 20) break;
+                    }
+                }
+
+                gustmpsel.textContent = `${maxgust.toFixed(1)} m/s`;
+                gustkmhel.textContent = `${(maxgust * 3.6).toFixed(1)} km/h`;
+                gustmphel.textContent = `${(maxgust * 2.23694).toFixed(1)} mph`;
             } else {
-                gustmpsel.textContent = `${guststep.toFixed(1)} m/s`;
-                gustskmhel.textContent = `${(guststep * 3.6).toFixed(1)} km/h`;
-                gustsmphel.textContent = `${(guststep * 2.23694).toFixed(1)} mph`;
+                gustmpsel.textContent = `${gustmps.toFixed(1)} m/s`;
+                gustkmhel.textContent = `${(gustmps * 3.6).toFixed(1)} km/h`;
+                gustmphel.textContent = `${(gustmps * 2.23694).toFixed(1)} mph`;
             }
         } else {
             windspeedmpsel.textContent = "n/a m/s";
@@ -278,8 +287,8 @@ async function fetchdata(station_name) {
             sustainedwindspeedmphel.textContent = "n/a mph";
 
             gustmpsel.textContent = "n/a m/s";
-            gustskmhel.textContent = "n/a km/h";
-            gustsmphel.textContent = "n/a mph";
+            gustkmhel.textContent = "n/a km/h";
+            gustmphel.textContent = "n/a mph";
         }
     } catch (error) {
         if (error.name === "AbortError") {

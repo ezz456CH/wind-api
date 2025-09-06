@@ -28,11 +28,13 @@ app.post("/v0/data", async (req, res) => {
     const station = stations.find((c) => c.token === token);
     if (!station) return res.status(401).json({ error: "Unauthorized" });
 
-    const { timestamp, windspeed_mps } = req.body;
+    const { timestamp, windspeed_mps, last_10m_sustained, last_10m_gust } = req.body;
 
     const entry = {
         timestamp: timestamp || new Date().toISOString(),
         windspeed_mps: windspeed_mps,
+        last_10m_sustained: last_10m_sustained,
+        last_10m_gust: last_10m_gust,
     };
 
     //console.log(`Data received from ${station.name}:`, entry);
