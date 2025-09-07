@@ -236,9 +236,10 @@ async function fetchdata(station_name) {
             }
 
             if (isNaN(sustainedmps) || sustainedmps == 0) {
-                const calculated_sustained = last.reduce((a, b) => a + (parseFloat(b.windspeed_mps) || 0), 0) / last.length;
+                let calculated_sustained = last.reduce((a, b) => a + (parseFloat(b.windspeed_mps) || 0), 0) / last.length;
+                calculated_sustained = calculated_sustained.toFixed(1);
 
-                sustainedwindspeedmpsel.textContent = `${calculated_sustained.toFixed(1)} m/s`;
+                sustainedwindspeedmpsel.textContent = `${calculated_sustained} m/s`;
                 sustainedwindspeedkmhel.textContent = `${(calculated_sustained * 3.6).toFixed(1)} km/h`;
                 sustainedwindspeedmphel.textContent = `${(calculated_sustained * 2.23694).toFixed(1)} mph`;
             } else {
