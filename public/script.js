@@ -195,7 +195,7 @@ async function fetchdata(station_name) {
 
         windspeed_history = last.map((item) => ({
             timestamp: new Date(item.timestamp),
-            windspeed: parseFloat(item.windspeed_mps) || null,
+            windspeed: isNaN(parseFloat(item.windspeed_mps)) ? null : parseFloat(item.windspeed_mps),
         }));
 
         if (last.length > 0) {
