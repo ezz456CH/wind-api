@@ -1,52 +1,57 @@
 const stationselect = document.getElementById("station-select");
 
-const windspeedmpsel = document.querySelector(".windspeedmps");
-const windspeedkmhel = document.querySelector(".windspeedkmh");
-const windspeedmphel = document.querySelector(".windspeedmph");
-
-const sustainedwindspeedmpsel = document.querySelector(".sustainedmps");
-const sustainedwindspeedkmhel = document.querySelector(".sustainedkmh");
-const sustainedwindspeedmphel = document.querySelector(".sustainedmph");
-
-const gustmpsel = document.querySelector(".gustmps");
-const gustkmhel = document.querySelector(".gustkmh");
-const gustmphel = document.querySelector(".gustmph");
+const windspeedel = document.querySelector(".windspeed");
+const sustainedwindspeedel = document.querySelector(".sustained");
+const gustel = document.querySelector(".gust");
 
 const ctx = document.getElementById("history-chart").getContext("2d");
+
+const updatedel = document.querySelector(".updated");
+
+const unitels = document.querySelectorAll(".unit");
+
+let windspeed_history = [];
+let windspeedmps = null;
+let sustainedmps = null;
+let gustmps = null;
+
+const unit = localStorage.getItem("unit") || "m/s";
+const units = ["m/s", "km/h", "mph"];
+
+unitels.textContent = unit;
+
+if (!units.includes(unit)) {
+    localStorage.setItem("unit", "m/s");
+}
+
+unitels.forEach((el) => {
+    el.textContent = unit;
+
+    el.addEventListener("click", () => {
+        let currentindex = units.indexOf(el.textContent);
+        currentindex = (currentindex + 1) % units.length;
+        const newunit = units[currentindex];
+
+        el.textContent = newunit;
+        localStorage.setItem("unit", newunit);
+        unitels.forEach((other) => (other.textContent = newunit));
+
+        updatedata();
+    });
+});
 
 Chart.defaults.font.family = "JetBrains Mono, monospace";
 Chart.defaults.font.size = 12;
 Chart.defaults.font.style = "normal";
 Chart.defaults.font.weight = "600";
 
-const windchart = new Chart(ctx, {
+const chart = new Chart(ctx, {
     type: "line",
     data: {
         labels: [],
         datasets: [
             {
-                label: "Windspeed (km/h)",
-                data: [],
-                borderWidth: 2,
-                borderColor: "rgba(173, 250, 247, 1)",
-                backgroundColor: "rgba(255, 255, 255, 0)",
-                tension: 0.2,
-                pointRadius: 0,
-                pointHitRadius: 5,
-                yAxisID: "y",
-            },
-            {
-                label: "Windspeed (mph)",
-                data: [],
-                borderWidth: 2,
-                borderColor: "rgba(247, 250, 173, 1)",
-                backgroundColor: "rgba(255, 255, 255, 0)",
-                pointRadius: 0,
-                pointHitRadius: 5,
-                yAxisID: "y",
-            },
-            {
-                label: "Windspeed (m/s)",
+                label: "Windspeed",
                 data: [],
                 borderWidth: 2,
                 borderColor: "rgba(250, 173, 247, 1)",
@@ -85,7 +90,7 @@ const windchart = new Chart(ctx, {
                     tooltipFormat: "yyyy-MM-dd HH:mm:ss",
                 },
                 ticks: {
-                    maxTicksLimit: 3,
+                    maxTicksLimit: 2,
                     callback: function (value, index, ticks) {
                         const date = new Date(value);
                         const hours = date.getHours().toString().padStart(2, "0");
@@ -99,7 +104,7 @@ const windchart = new Chart(ctx, {
             y: {
                 beginAtZero: true,
                 ticks: {
-                    stepSize: 0.5,
+                    stepSize: 1,
                     callback: function (value) {
                         return Number(value).toFixed(1);
                     },
@@ -158,21 +163,13 @@ async function fetchdata(station_name) {
 
         if (!res.ok) {
             if (res.status === 404) {
-                windchart.data.labels = [];
-                windchart.data.datasets.forEach((ds) => (ds.data = []));
-                windchart.update();
+                chart.data.labels = [];
+                chart.data.datasets.forEach((ds) => (ds.data = []));
+                chart.update();
 
-                windspeedmpsel.textContent = "n/a m/s";
-                windspeedkmhel.textContent = "n/a km/h";
-                windspeedmphel.textContent = "n/a mph";
-
-                sustainedwindspeedmpsel.textContent = "n/a m/s";
-                sustainedwindspeedkmhel.textContent = "n/a km/h";
-                sustainedwindspeedmphel.textContent = "n/a mph";
-
-                gustmpsel.textContent = "n/a m/s";
-                gustkmhel.textContent = "n/a km/h";
-                gustmphel.textContent = "n/a mph";
+                windspeedmps = "n/a";
+                sustainedmps = "n/a";
+                gustmps = "n/a";
 
                 return;
             } else {
@@ -182,23 +179,12 @@ async function fetchdata(station_name) {
 
         const data = await res.json();
 
-        windchart.data.labels = [];
-        windchart.data.datasets.forEach((ds) => (ds.data = []));
-
         if (!data || data.length === 0) {
-            windchart.update();
+            windspeed_history = [];
 
-            windspeedmpsel.textContent = "n/a m/s";
-            windspeedkmhel.textContent = "n/a km/h";
-            windspeedmphel.textContent = "n/a mph";
-
-            sustainedwindspeedmpsel.textContent = "n/a m/s";
-            sustainedwindspeedkmhel.textContent = "n/a km/h";
-            sustainedwindspeedmphel.textContent = "n/a mph";
-
-            gustmpsel.textContent = "n/a m/s";
-            gustkmhel.textContent = "n/a km/h";
-            gustmphel.textContent = "n/a mph";
+            windspeedmps = "n/a";
+            sustainedmps = "n/a";
+            gustmps = "n/a";
 
             return;
         }
@@ -206,49 +192,33 @@ async function fetchdata(station_name) {
         const now = new Date();
         const last = data.filter((item) => now - new Date(item.timestamp) <= 10 * 60 * 1000);
 
-        last.forEach((item) => {
-            const windspeedmps = parseFloat(item.windspeed_mps);
-            const timestamp = new Date(item.timestamp);
-            if (!isNaN(windspeedmps)) {
-                windchart.data.labels.push(timestamp);
-                windchart.data.datasets[0].data.push(windspeedmps * 3.6);
-                windchart.data.datasets[1].data.push(windspeedmps * 2.23694);
-                windchart.data.datasets[2].data.push(windspeedmps);
-            }
-        });
-
-        windchart.update();
+        windspeed_history = last.map((item) => ({
+            timestamp: new Date(item.timestamp),
+            windspeed: parseFloat(item.windspeed_mps) || null,
+        }));
 
         if (last.length > 0) {
             const latestitem = last[last.length - 1];
-            const windspeedmps = parseFloat(latestitem.windspeed_mps);
-            let sustainedmps = parseFloat(latestitem.last_10m_sustained);
-            const gustmps = parseFloat(latestitem.last_10m_gust);
+            const windspeed = parseFloat(latestitem.windspeed_mps);
+            let sustained = parseFloat(latestitem.last_10m_sustained);
+            const gust = parseFloat(latestitem.last_10m_gust);
 
-            if (isNaN(windspeedmps)) {
-                windspeedmpsel.textContent = "n/a m/s";
-                windspeedkmhel.textContent = "n/a km/h";
-                windspeedmphel.textContent = "n/a mph";
+            if (isNaN(windspeed)) {
+                windspeedmps = "n/a";
             } else {
-                windspeedmpsel.textContent = `${windspeedmps.toFixed(1)} m/s`;
-                windspeedkmhel.textContent = `${(windspeedmps * 3.6).toFixed(1)} km/h`;
-                windspeedmphel.textContent = `${(windspeedmps * 2.23694).toFixed(1)} mph`;
+                windspeedmps = `${windspeed.toFixed(1)}`;
             }
 
-            if (isNaN(sustainedmps) || sustainedmps == 0) {
+            if (isNaN(sustained) || sustained == 0) {
                 let calculated_sustained = last.reduce((a, b) => a + (parseFloat(b.windspeed_mps) || 0), 0) / last.length;
                 calculated_sustained = calculated_sustained.toFixed(1);
 
-                sustainedwindspeedmpsel.textContent = `${calculated_sustained} m/s`;
-                sustainedwindspeedkmhel.textContent = `${(calculated_sustained * 3.6).toFixed(1)} km/h`;
-                sustainedwindspeedmphel.textContent = `${(calculated_sustained * 2.23694).toFixed(1)} mph`;
+                sustainedmps = `${calculated_sustained}`;
             } else {
-                sustainedwindspeedmpsel.textContent = `${sustainedmps.toFixed(1)} m/s`;
-                sustainedwindspeedkmhel.textContent = `${(sustainedmps * 3.6).toFixed(1)} km/h`;
-                sustainedwindspeedmphel.textContent = `${(sustainedmps * 2.23694).toFixed(1)} mph`;
+                sustainedmps = `${sustained.toFixed(1)}`;
             }
 
-            if (isNaN(gustmps) || gustmps == 0) {
+            if (isNaN(gust) || gust == 0) {
                 let maxgust = 0;
 
                 for (let i = 0; i < last.length; i++) {
@@ -270,26 +240,14 @@ async function fetchdata(station_name) {
                     }
                 }
 
-                gustmpsel.textContent = `${maxgust.toFixed(1)} m/s`;
-                gustkmhel.textContent = `${(maxgust * 3.6).toFixed(1)} km/h`;
-                gustmphel.textContent = `${(maxgust * 2.23694).toFixed(1)} mph`;
+                gustmps = `${maxgust.toFixed(1)}`;
             } else {
-                gustmpsel.textContent = `${gustmps.toFixed(1)} m/s`;
-                gustkmhel.textContent = `${(gustmps * 3.6).toFixed(1)} km/h`;
-                gustmphel.textContent = `${(gustmps * 2.23694).toFixed(1)} mph`;
+                gustmps = `${gust.toFixed(1)}`;
             }
         } else {
-            windspeedmpsel.textContent = "n/a m/s";
-            windspeedkmhel.textContent = "n/a km/h";
-            windspeedmphel.textContent = "n/a mph";
-
-            sustainedwindspeedmpsel.textContent = "n/a m/s";
-            sustainedwindspeedkmhel.textContent = "n/a km/h";
-            sustainedwindspeedmphel.textContent = "n/a mph";
-
-            gustmpsel.textContent = "n/a m/s";
-            gustkmhel.textContent = "n/a km/h";
-            gustmphel.textContent = "n/a mph";
+            windspeedmps = "n/a";
+            sustainedmps = "n/a";
+            gustmps = "n/a";
         }
     } catch (error) {
         if (error.name === "AbortError") {
@@ -298,24 +256,52 @@ async function fetchdata(station_name) {
 
         console.error("Error fetching windspeed:", error);
 
-        windchart.data.labels = [];
-        windchart.data.datasets.forEach((ds) => (ds.data = []));
-        windchart.update();
-
-        windspeedmpsel.textContent = "n/a m/s";
-        windspeedkmhel.textContent = "n/a km/h";
-        windspeedmphel.textContent = "n/a mph";
-
-        sustainedwindspeedmpsel.textContent = "n/a m/s";
-        sustainedwindspeedkmhel.textContent = "n/a km/h";
-        sustainedwindspeedmphel.textContent = "n/a mph";
-
-        gustmpsel.textContent = "n/a m/s";
-        gustskmhel.textContent = "n/a km/h";
-        gustsmphel.textContent = "n/a mph";
+        windspeedmps = "ERR";
+        sustainedmps = "ERR";
+        gustmps = "ERR";
     }
 
     setTimeout(() => fetchdata(stationselect.value), 1000);
 }
 
+let updatetimer;
+
+async function updatedata() {
+    const unit = localStorage.getItem("unit") || "m/s";
+
+    if (unit === "km/h") {
+        windspeedel.textContent = windspeedmps === "n/a" || windspeedmps === "ERR" ? windspeedmps : (parseFloat(windspeedmps) * 3.6).toFixed(1);
+        sustainedwindspeedel.textContent = sustainedmps === "n/a" || sustainedmps === "ERR" ? sustainedmps : (parseFloat(sustainedmps) * 3.6).toFixed(1);
+        gustel.textContent = gustmps === "n/a" || gustmps === "ERR" ? gustmps : (parseFloat(gustmps) * 3.6).toFixed(1);
+    } else if (unit === "mph") {
+        windspeedel.textContent = windspeedmps === "n/a" || windspeedmps === "ERR" ? windspeedmps : (parseFloat(windspeedmps) * 2.23694).toFixed(1);
+        sustainedwindspeedel.textContent = sustainedmps === "n/a" || sustainedmps === "ERR" ? sustainedmps : (parseFloat(sustainedmps) * 2.23694).toFixed(1);
+        gustel.textContent = gustmps === "n/a" || gustmps === "ERR" ? gustmps : (parseFloat(gustmps) * 2.23694).toFixed(1);
+    } else {
+        windspeedel.textContent = windspeedmps;
+        sustainedwindspeedel.textContent = sustainedmps;
+        gustel.textContent = gustmps;
+    }
+
+    chart.data.labels = windspeed_history.map((item) => item.timestamp);
+    chart.data.datasets.forEach((ds) => {
+        const unit = localStorage.getItem("unit") || "m/s";
+        ds.data = windspeed_history.map((item) => {
+            if (item.windspeed == null) return null;
+            if (unit === "km/h") return item.windspeed * 3.6;
+            if (unit === "mph") return item.windspeed * 2.23694;
+            return item.windspeed;
+        });
+    });
+    chart.data.datasets[0].label = `Windspeed (${unit})`;
+    chart.update();
+
+    const lastupdated = windspeed_history.length > 0 ? windspeed_history[windspeed_history.length - 1].timestamp : null;
+    updatedel.textContent = lastupdated ? `Last Updated: ${lastupdated.getFullYear()}-${String(lastupdated.getMonth() + 1).padStart(2, "0")}-${String(lastupdated.getDate()).padStart(2, "0")} ${String(lastupdated.getHours()).padStart(2, "0")}:${String(lastupdated.getMinutes()).padStart(2, "0")}:${String(lastupdated.getSeconds()).padStart(2, "0")}` : "Last Updated: n/a";
+
+    clearTimeout(updatetimer);
+    updatetimer = setTimeout(updatedata, 500);
+}
+
 loadstations();
+updatedata();

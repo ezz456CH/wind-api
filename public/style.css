@@ -30,12 +30,7 @@ select:focus-visible {
     outline: none;
 }
 
-.windspeedtitle {
-    margin-bottom: 6px;
-}
-
-.suswindspeedtitle,
-.guststitle {
+.small {
     font-size: 12px;
 }
 
@@ -68,7 +63,6 @@ select:focus-visible {
     gap: 8px;
     justify-content: center;
     align-items: center;
-    font-size: 14px;
 }
 
 .windspeed-block {
@@ -79,18 +73,35 @@ select:focus-visible {
 
 .chart-container {
     width: 80%;
-    max-width: 500px;
+    max-width: 400px;
     height: 35vh;
     min-height: 100px;
-    max-height: 300px;
+    max-height: 200px;
     margin-top: 24px;
+}
+
+.updated {
+    color: #666;
+}
+
+.unit {
+    text-decoration: underline;
+    user-select: none;
+    cursor: pointer;
+}
+
+.spacer {
+    margin-top: 16px;
 }
 
 @media (orientation: landscape) and (max-height: 500px) {
     .chart-container,
-    p,
-    h1 {
+    p {
         margin-top: 0px;
+    }
+
+    .spacer {
+        margin-top: 8px;
     }
 }
 
