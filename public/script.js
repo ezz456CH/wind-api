@@ -177,7 +177,8 @@ async function fetchdata(station_name) {
             }
         }
 
-        const data = await res.json();
+        const result = await res.json();
+        const data = result.data;
 
         if (!data || data.length === 0) {
             windspeed_history = [];
@@ -189,7 +190,7 @@ async function fetchdata(station_name) {
             return;
         }
 
-        const now = new Date();
+        const now = new Date(result.server_time);
         const last = data.filter((item) => now - new Date(item.timestamp) <= 10 * 60 * 1000);
 
         windspeed_history = last.map((item) => ({

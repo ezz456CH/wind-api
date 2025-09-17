@@ -118,7 +118,10 @@ app.get("/v0/stations/:name/data", async (req, res) => {
             return ts >= last.getTime();
         });
 
-        res.json(lastdata);
+        res.json({
+            server_time: now.toISOString(),
+            data: lastdata,
+        });
     } catch (err) {
         console.error("error reading data:", err);
         res.status(500).json({ error: "failed to read data" });

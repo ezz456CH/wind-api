@@ -91,13 +91,13 @@ select:focus-visible {
 }
 
 .spacer {
-    margin-top: 16px;
+    margin-top: 14px;
 }
 
 @media (orientation: landscape) and (max-height: 500px) {
     .chart-container,
     p {
-        margin-top: 0px;
+        margin-top: 4px;
     }
 
     .spacer {
