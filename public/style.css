@@ -112,12 +112,6 @@ select:focus-visible {
         gap: 0px;
     }
 
-    .station-container-row {
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
-    }
-
     .windspeed-block {
         width: 100%;
         max-width: 250px;
