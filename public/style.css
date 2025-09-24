@@ -1,7 +1,6 @@
 @font-face {
     font-family: "JetBrains Mono";
-    src: url("webfonts/JetBrainsMono-SemiBold.ttf") format("truetype");
-    font-weight: 600;
+    src: url("webfonts/JetBrainsMono-Bold.woff2") format("truetype");
     font-display: block;
 }
 
@@ -31,6 +30,7 @@ select:focus-visible {
 }
 
 .small {
+    line-height: 2;
     font-size: 12px;
 }
 
