@@ -15,7 +15,7 @@ body {
 }
 
 select {
-    max-width: 200px;
+    max-width: 128px;
     padding-left: 6px;
     padding-right: 6px;
     border: none;

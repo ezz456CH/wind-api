@@ -1,16 +1,21 @@
 {
-  "name": "wind-api",
-  "version": "0.2.3",
-  "description": "",
-  "license": "MIT",
-  "author": "ezz456CH",
-  "type": "commonjs",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "dependencies": {
-    "dotenv": "^17.2.1",
-    "express": "^5.1.0"
-  }
+    "name": "wind-api",
+    "version": "0.2.3",
+    "description": "",
+    "license": "MIT",
+    "author": "ezz456CH",
+    "main": "index.js",
+    "scripts": {
+        "dev": "bun --watch index.ts",
+        "build": "bun build index.ts --target bun --outdir ./dist",
+        "start": "NODE_ENV=production bun dist/index.js",
+        "test": "bun test"
+    },
+    "dependencies": {
+        "@elysiajs/static": "^1.4.0",
+        "elysia": "^1.4.8"
+    },
+    "devDependencies": {
+        "@types/bun": "^1.2.23"
+    }
 }
