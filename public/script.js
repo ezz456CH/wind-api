@@ -84,6 +84,7 @@ const chartconfig = {
             },
             legend: { display: false },
             tooltip: {
+                displayColors: false,
                 callbacks: {
                     label: function (context) {
                         const label = context.dataset.label || "";
@@ -295,6 +296,7 @@ function updatedata() {
         ds.data = windspeed_history.map((item) => (item.windspeed == null ? null : convert(item.windspeed)));
     });
     chart.options.plugins.title.text = `Windspeed (${unit})`;
+    chart.data.datasets[0].label = `Windspeed (${unit})`;
     chart.update();
 
     const lastupdated = windspeed_history.at(-1)?.timestamp;
