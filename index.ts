@@ -9,9 +9,40 @@ const filter_stations_uuids = (process.env.FILTER_STATIONS_UUIDS || "").split(",
 const connections = new Map();
 const recent_connections = new Map();
 
+function heartbeat(ws: { data: client_data; send: (msg: string) => void; close: (code: number, reason: string) => void }) {
+    if (ws.data?.heartbeat_started) return;
+    ws.data.heartbeat_started = true;
+
+    function loop() {
+        if (ws.data?.closed) return;
+
+        ws.data.awaitingpong = true;
+        ws.send(JSON.stringify({ action: "ping" }));
+
+        setTimeout(() => {
+            if (ws.data?.closed) return;
+
+            if (ws.data.awaitingpong) {
+                console.log(`🔌 [${new Date().toISOString()}] Closing dead connection: ${ws.data.uuid} @ ${ws.data.ip}`);
+                ws.close(4001, "no pong");
+                return;
+            }
+
+            setTimeout(loop, 15000);
+        }, 10000);
+    }
+
+    setTimeout(loop, 15000);
+}
+
 interface client_data {
     uuid: string | null;
     station: string | null;
+    ip?: string;
+    awaitingpong?: boolean;
+    closed?: boolean;
+    heartbeat_started?: boolean;
+    headers?: Record<string, string>;
 }
 
 const app = new Elysia()
@@ -92,6 +123,14 @@ const app = new Elysia()
                 data = message;
             }
 
+            const ip = ws.data.headers?.["x-forwarded-for"] || ws.remoteAddress;
+            ws.data.ip = ip;
+
+            if (data.action === "pong") {
+                ws.data.awaitingpong = false;
+                return;
+            }
+
             if (data.uuid && data.station && !ws.data.uuid) {
                 if (filter_stations && !filter_stations_uuids.includes(data.uuid)) {
                     ws.send(JSON.stringify({ action: "rejected", reason: "unauthorized" }));
@@ -99,11 +138,10 @@ const app = new Elysia()
                     return;
                 }
 
+                heartbeat(ws);
+
                 ws.data.uuid = data.uuid;
                 ws.data.station = data.station;
-
-                const ip = ws.data.headers?.["x-forwarded-for"] || ws.remoteAddress;
-
                 const connected_at = new Date().toISOString();
 
                 connections.set(ws.data.uuid, {
@@ -154,6 +192,7 @@ const app = new Elysia()
         },
 
         close(ws: any) {
+            ws.data.closed = true;
             if (ws.data.uuid) {
                 connections.delete(ws.data.uuid);
 
@@ -161,7 +200,7 @@ const app = new Elysia()
                     recent_connections.get(ws.data.uuid).online = false;
                 }
 
-                console.log(`❌ [${new Date().toISOString()}] Disconnected from: ${ws.data.station} (${ws.data.uuid})`);
+                console.log(`❌ [${new Date().toISOString()}] Disconnected from: ${ws.data.station} (${ws.data.uuid}) @ ${ws.data.ip}`);
             }
         },
     })
