@@ -82,7 +82,6 @@ const app = new Elysia()
             ws.data = { uuid: null, station: null } as client_data;
             ws.send(JSON.stringify({ action: "identify" }));
         },
-
         async message(ws: any, message) {
             let data: any;
             if (typeof message === "string") {
@@ -122,7 +121,7 @@ const app = new Elysia()
                     lastseen: connected_at,
                     online: true,
                 });
-                console.log(`✅ Connected from: ${data.station} (${data.uuid}) @ ${ip}`);
+                console.log(`✅ [${new Date().toISOString()}] Connected from: ${data.station} (${data.uuid}) @ ${ip}`);
 
                 ws.send(JSON.stringify({ action: "registered", uuid: data.uuid }));
                 return;
@@ -150,7 +149,7 @@ const app = new Elysia()
 
                 await appendFile(filepath, line, "utf8");
             } catch (err) {
-                console.error(`❌ Failed to save data for ${ws.data.station}:`, err);
+                console.error(`❌ [${new Date().toISOString()}] Failed to save data for ${ws.data.station}:`, err);
             }
         },
 
@@ -162,10 +161,10 @@ const app = new Elysia()
                     recent_connections.get(ws.data.uuid).online = false;
                 }
 
-                console.log(`❌ Disconnected from: ${ws.data.station} (${ws.data.uuid})`);
+                console.log(`❌ [${new Date().toISOString()}] Disconnected from: ${ws.data.station} (${ws.data.uuid})`);
             }
         },
     })
     .listen(port);
 
-console.log(`🦊 Elysia is running at ${app.server?.hostname}:${app.server?.port}`);
+console.log(`🦊 [${new Date().toISOString()}] Elysia is running at ${app.server?.hostname}:${app.server?.port}`);
