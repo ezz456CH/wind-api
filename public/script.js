@@ -1,24 +1,21 @@
 const stationselect = document.getElementById("station-select");
-
 const windspeedel = document.querySelector(".windspeed");
 const sustainedwindspeedel = document.querySelector(".sustained");
 const gustel = document.querySelector(".gust");
-
-const ctx = document.getElementById("history-chart").getContext("2d");
-
 const updatedel = document.querySelector(".updated");
-
 const unitels = document.querySelectorAll(".unit");
 
 let windspeed_history = [];
 let windspeedmps = null;
 let sustainedmps = null;
 let gustmps = null;
+let chart = null;
+let currentcontroller = null;
+let currenttimer = null;
+let updatetimer = null;
 
-const unit = localStorage.getItem("unit") || "m/s";
 const units = ["m/s", "km/h", "mph"];
-
-unitels.textContent = unit;
+const unit = localStorage.getItem("unit") || "m/s";
 
 if (!units.includes(unit)) {
     localStorage.setItem("unit", "m/s");
@@ -26,16 +23,13 @@ if (!units.includes(unit)) {
 
 unitels.forEach((el) => {
     el.textContent = unit;
-
     el.addEventListener("click", () => {
         let currentindex = units.indexOf(el.textContent);
         currentindex = (currentindex + 1) % units.length;
         const newunit = units[currentindex];
 
-        el.textContent = newunit;
         localStorage.setItem("unit", newunit);
         unitels.forEach((other) => (other.textContent = newunit));
-
         updatedata();
     });
 });
@@ -103,7 +97,7 @@ const chartconfig = {
                 },
                 ticks: {
                     maxTicksLimit: 2,
-                    callback: function (value, index, ticks) {
+                    callback: function (value) {
                         const date = new Date(value);
                         const hours = date.getHours().toString().padStart(2, "0");
                         const minutes = date.getMinutes().toString().padStart(2, "0");
@@ -128,15 +122,27 @@ const chartconfig = {
     },
 };
 
-let chart = new Chart(ctx, chartconfig);
+function createchart() {
+    const canvas = document.getElementById("history-chart");
+    if (!canvas) return null;
+    Chart.getChart(canvas)?.destroy();
+    return new Chart(canvas.getContext("2d"), chartconfig);
+}
 
-document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) {
-        setTimeout(() => {
-            chart.destroy();
-            chart = new Chart(ctx, chartconfig);
-        }, 50);
+function rebuildchart() {
+    console.log("creating or rebuilding chart");
+    chart = createchart();
+    if (chart) {
+        updatedata();
     }
+}
+
+["visibilitychange", "pageshow", "orientationchange"].forEach((evt) => {
+    window.addEventListener(evt, () => {
+        if (!document.hidden) {
+            setTimeout(rebuildchart, 300);
+        }
+    });
 });
 
 async function loadstations() {
@@ -175,32 +181,21 @@ async function loadstations() {
 stationselect.addEventListener("change", () => {
     const selectedoption = stationselect.options[stationselect.selectedIndex];
     if (!selectedoption) return;
-
     const station = selectedoption.value;
     const uuid = selectedoption.dataset.uuid;
-
     localStorage.setItem("laststation", station);
     fetchdata(station, uuid);
 });
 
-let currentcontroller = null;
-let currenttimer = null;
-
 async function fetchdata(station, uuid) {
     if (!station || !uuid) return;
 
-    if (currentcontroller) {
-        currentcontroller.abort();
-    }
+    if (currentcontroller) currentcontroller.abort();
     currentcontroller = new AbortController();
 
-    if (currenttimer) {
-        clearTimeout(currenttimer);
-    }
+    if (currenttimer) clearTimeout(currenttimer);
 
-    const timeoutid = setTimeout(() => {
-        currentcontroller.abort();
-    }, 5000);
+    const timeoutid = setTimeout(() => currentcontroller.abort(), 5000);
 
     try {
         const res = await fetch(`/v0/stations/${station}/${uuid}/data`, {
@@ -209,13 +204,11 @@ async function fetchdata(station, uuid) {
 
         if (!res.ok) {
             if (res.status === 404) {
-                chart.data.datasets.forEach((ds) => (ds.data = []));
-                chart.update();
-
-                windspeedmps = "n/a";
-                sustainedmps = "n/a";
-                gustmps = "n/a";
-
+                if (chart) {
+                    chart.data.datasets.forEach((ds) => (ds.data = []));
+                    chart.update();
+                }
+                windspeedmps = sustainedmps = gustmps = "n/a";
                 setTimeout(() => fetchdata(stationselect.value, uuid), 1000);
                 return;
             } else {
@@ -228,11 +221,7 @@ async function fetchdata(station, uuid) {
 
         if (!data || data.length === 0) {
             windspeed_history = [];
-
-            windspeedmps = "n/a";
-            sustainedmps = "n/a";
-            gustmps = "n/a";
-
+            windspeedmps = sustainedmps = gustmps = "n/a";
             return;
         }
 
@@ -246,7 +235,6 @@ async function fetchdata(station, uuid) {
 
         if (last.length > 0) {
             const latestitem = last[last.length - 1];
-
             const windspeed = parseFloat(latestitem.windspeed_mps);
             const sustained = parseFloat(latestitem.last_10m_sustained);
             const gust = parseFloat(latestitem.last_10m_gust);
@@ -255,9 +243,7 @@ async function fetchdata(station, uuid) {
             sustainedmps = isNaN(sustained) ? "n/a" : sustained.toFixed(1);
             gustmps = isNaN(gust) ? "n/a" : gust.toFixed(1);
         } else {
-            windspeedmps = "n/a";
-            sustainedmps = "n/a";
-            gustmps = "n/a";
+            windspeedmps = sustainedmps = gustmps = "n/a";
         }
     } catch (error) {
         if (error.name === "AbortError") {
@@ -272,18 +258,16 @@ async function fetchdata(station, uuid) {
     currenttimer = setTimeout(() => fetchdata(stationselect.value, uuid), 1000);
 }
 
-let updatetimer;
 function updatedata() {
+    if (!chart) return;
+
     const unit = localStorage.getItem("unit") || "m/s";
     const convert = (val) => {
         if (val === "n/a") return val;
-
         const num = parseFloat(val);
         if (isNaN(num)) return "n/a";
-
         if (unit === "km/h") return (num * 3.6).toFixed(1);
         if (unit === "mph") return (num * 2.23694).toFixed(1);
-
         return num.toFixed(1);
     };
 
@@ -306,5 +290,6 @@ function updatedata() {
     updatetimer = setTimeout(updatedata, 500);
 }
 
+chart = createchart();
 loadstations();
 updatedata();
