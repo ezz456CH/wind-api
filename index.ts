@@ -103,7 +103,7 @@ const app = new Elysia()
                 ws.data.uuid = data.uuid;
                 ws.data.station = data.station;
 
-                const ip = ws.remoteAddress || ws.data.headers?.["x-forwarded-for"];
+                const ip = ws.data.headers?.["x-forwarded-for"] || ws.remoteAddress;
 
                 const connected_at = new Date().toISOString();
 
